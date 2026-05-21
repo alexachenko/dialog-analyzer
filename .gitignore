@@ -1,0 +1,6 @@
+topic_model/
+emotion_model/
+chroma_data/
+__pycache__/
+*.pyc
+training_data*.csv
