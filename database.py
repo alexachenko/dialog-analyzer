@@ -3,28 +3,27 @@ import re
 import uuid
 import chromadb
 from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class DialogDatabase:
 
     def __init__(self):
 
-        # embedding модель (E5 — хорошо подходит для search)
-        self.model = SentenceTransformer(
-            "intfloat/multilingual-e5-base"
-        )
-
-        # persistent vector DB
-        self.client = chromadb.PersistentClient(
-            path="./chroma_data"
-        )
-
-        self.collection = self.client.get_or_create_collection(
-            name="dialogs"
-        )
-
         self.texts = []
 
+        self.full_texts = []
+
+        self.vectorizer = TfidfVectorizer(
+            lowercase=True,
+            ngram_range=(1, 2)
+        )
+
+        self.matrix = None
+
+    # -----------------------------
+    # Извлекаем только текст клиента
     # -----------------------------
 
     def extract_client_text(self, dialog):
@@ -35,8 +34,13 @@ class DialogDatabase:
             re.DOTALL
         )
 
-        return " ".join(matches).strip().lower()
+        if matches:
+            return " ".join(matches).strip().lower()
 
+        return str(dialog).strip().lower()
+
+    # -----------------------------
+    # Загружаем диалоги
     # -----------------------------
 
     def load_dialogs(self, csv_file):
@@ -46,66 +50,69 @@ class DialogDatabase:
         if "dialog" not in df.columns:
             raise Exception("CSV должен содержать колонку 'dialog'")
 
-        # только клиентский текст
-        self.texts = df["dialog"].apply(
-            self.extract_client_text
-        ).tolist()
+        # Убираем полные дубликаты диалогов
+        df = df.drop_duplicates(subset=["dialog"])
 
-        ids = [str(uuid.uuid4()) for _ in self.texts]
+        # Полный текст для вывода
+        self.full_texts = df["dialog"].astype(str).tolist()
 
-        # E5 форматирование (ВАЖНО для качества поиска)
-        documents = [
-            f"passage: {text}"
-            for text in self.texts
-        ]
-
-        embeddings = self.model.encode(
-            documents,
-            normalize_embeddings=True,
-            show_progress_bar=True
+        # Клиентский текст для поиска
+        self.texts = (
+            df["dialog"]
+            .apply(self.extract_client_text)
+            .tolist()
         )
 
-        # добавляем в Chroma
-        self.collection.add(
-            ids=ids,
-            documents=self.texts,
-            embeddings=embeddings
-        )
+        self.matrix = self.vectorizer.fit_transform(self.texts)
 
-        print(f"Loaded dialogs: {len(self.texts)}")
+        print(f"Уникальных диалогов загружено: {len(self.texts)}")
 
         return len(self.texts)
 
     # -----------------------------
+    # Поиск похожих обращений
+    # -----------------------------
 
     def find_similar(self, query_text, top_k=5):
 
-        if not self.texts:
+        if not self.texts or self.matrix is None:
             return []
 
-        query_text = query_text.lower()
+        query_text = str(query_text).lower().strip()
 
-        # важная нормализация запроса
-        query = f"query: жалоба клиента: {query_text}"
-
-        query_embedding = self.model.encode(
-            [query],
-            normalize_embeddings=True
+        query_vector = self.vectorizer.transform(
+            [query_text]
         )
 
-        results = self.collection.query(
-            query_embeddings=query_embedding,
-            n_results=top_k
-        )
+        similarities = cosine_similarity(
+            query_vector,
+            self.matrix
+        )[0]
 
-        output = []
+        indexes = similarities.argsort()[::-1]
 
-        for doc, dist in zip(
-            results["documents"][0],
-            results["distances"][0]
-        ):
+        results = []
+        used_texts = set()
 
-            score = round((1 - dist) * 100, 2)
-            output.append((doc, score))
+        for idx in indexes:
+            search_text = self.texts[idx].strip().lower()
+            full_text = self.full_texts[idx].strip()
+            score = round(similarities[idx] * 100, 2)
 
-        return output
+            if score <= 0:
+                continue
+
+            if full_text in used_texts:
+                continue
+
+            used_texts.add(full_text)
+
+            results.append((
+                full_text,
+                score
+            ))
+
+            if len(results) >= top_k:
+                break
+
+        return results
