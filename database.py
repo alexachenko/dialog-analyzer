@@ -136,6 +136,9 @@ class DialogDatabase:
         if "dialog" not in df.columns:
             raise Exception("CSV должен содержать колонку 'dialog'")
 
+        #убираем полные дубликаты диалогов
+        df = df.drop_duplicates(subset=["dialog"])
+
         #полный текст для вывода
         self.full_texts = df["dialog"].astype(str).tolist()
 
