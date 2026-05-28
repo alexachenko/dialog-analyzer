@@ -76,6 +76,8 @@ dialog-analyzer/
 ├── topic_model/                   # Сохранённая модель классификации тем
 ├── emotion_model/                 # Сохранённая модель анализа эмоций
 │
+├── chroma_data/                   # Локальное хранилище ChromaDB с векторной базой диалогов
+│
 └── README.md                      # Описание проекта
 ```
 
@@ -109,7 +111,7 @@ python -m venv .venv
 Установка библиотек:
 
 ```bash
-pip install streamlit pandas sentence-transformers chromadb transformers torch scikit-learn accelerate openpyxl
+pip install streamlit pandas sentence-transformers chromadb transformers torch scikit-learn accelerate openpyxl plotly
 ```
 
 ## Запуск приложения
