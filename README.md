@@ -1,6 +1,6 @@
 # Text Dialogue Analysis System
 
-[русский вариант readme.md](#cистемаанализатекстовыхдиалогов)
+[русский вариант readme.md](https://github.com/alexachenko/dialog-analyzer/tree/main#система-анализа-текстовых-диалогов)
 
 **Text Dialogue Analysis System** — a web application for automated processing 
 of support dialogues from marketplaces. Based on uploaded CSV files with 
