@@ -1,7 +1,6 @@
 # Text Dialogue Analysis System
 
-[русский вариант readme.md]()русский вариант readme.md(#cистема анализа текстовых диалогов)
-
+[русский вариант readme.md](#cистема анализа текстовых диалогов)
 **Text Dialogue Analysis System** — a web application for automated processing 
 of support dialogues from marketplaces. Based on uploaded CSV files with 
 dialogues, the neural network can determine the topic of an inquiry, analyze 
